@@ -7,7 +7,13 @@ from fastapi import FastAPI
 from mcp_gateway.config import get_settings
 from mcp_gateway.minio_client import ensure_bucket_exists
 from mcp_gateway.seed import seed_admin_user
+from mcp_gateway.api.routes.api_keys import router as api_keys_router
+from mcp_gateway.api.routes.auth import router as auth_router
+from mcp_gateway.api.routes.documents import router as documents_router
+from mcp_gateway.api.routes.jobs import router as jobs_router
 from mcp_gateway.api.routes.system import router as system_router
+from mcp_gateway.api.routes.uploads import router as uploads_router
+from mcp_gateway.api.routes.users import router as users_router
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +47,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(system_router, prefix="/api")
+    app.include_router(auth_router, prefix="/api")
+    app.include_router(users_router, prefix="/api")
+    app.include_router(api_keys_router, prefix="/api")
+    app.include_router(uploads_router, prefix="/api")
+    app.include_router(documents_router, prefix="/api")
+    app.include_router(jobs_router, prefix="/api")
     return app
 
 

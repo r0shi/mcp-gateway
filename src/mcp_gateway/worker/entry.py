@@ -13,6 +13,7 @@ from redis import Redis
 from rq import Worker
 
 from mcp_gateway.config import get_settings
+import mcp_gateway.worker.stages  # noqa: F401 — register stage functions for RQ
 
 
 def main():

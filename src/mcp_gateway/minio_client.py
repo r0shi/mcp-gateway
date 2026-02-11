@@ -1,6 +1,7 @@
 import logging
 
 from minio import Minio
+from minio.commonconfig import CopySource
 
 from mcp_gateway.config import get_settings
 
@@ -28,3 +29,16 @@ def ensure_bucket_exists() -> None:
         logger.info("Created MinIO bucket: %s", bucket)
     else:
         logger.info("MinIO bucket already exists: %s", bucket)
+
+
+def copy_and_delete_object(
+    src_bucket: str, src_key: str, dst_bucket: str, dst_key: str,
+) -> None:
+    """Copy an object to a new key and delete the original."""
+    client = get_minio_client()
+    client.copy_object(
+        dst_bucket,
+        dst_key,
+        CopySource(src_bucket, src_key),
+    )
+    client.remove_object(src_bucket, src_key)
