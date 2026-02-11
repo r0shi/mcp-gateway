@@ -1,0 +1,31 @@
+[project]
+name = "mcp-gateway"
+version = "0.1.0"
+description = "Local Knowledge Appliance - document dropbox with hybrid retrieval"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "pydantic-settings>=2.6.0",
+    "pgvector>=0.3.6",
+    "redis>=5.2.0",
+    "rq>=2.0.0",
+    "minio>=7.2.0",
+    "passlib[bcrypt]>=1.7.4",
+    "httpx>=0.28.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_gateway"]
+
+[project.scripts]
+mcp-gateway-api = "mcp_gateway.api.app:main"
+mcp-gateway-worker = "mcp_gateway.worker.entry:main"
+mcp-gateway-seed = "mcp_gateway.seed:main"

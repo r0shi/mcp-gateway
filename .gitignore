@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+*.egg
+.env
+.uv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Docker override
+docker-compose.override.yml
+
+# Caddy state
+caddy_data/
+caddy_config/
+
+# Persistent data (Docker volumes, but ignore if local)
+minio_data/
+pg_data/
+redis_data/
