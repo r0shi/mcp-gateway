@@ -11,11 +11,17 @@ from mcp_gateway.api.routes.api_keys import router as api_keys_router
 from mcp_gateway.api.routes.auth import router as auth_router
 from mcp_gateway.api.routes.documents import router as documents_router
 from mcp_gateway.api.routes.jobs import router as jobs_router
+from mcp_gateway.api.routes.search import router as search_router
 from mcp_gateway.api.routes.system import router as system_router
 from mcp_gateway.api.routes.uploads import router as uploads_router
 from mcp_gateway.api.routes.users import router as users_router
 
 logger = logging.getLogger(__name__)
+
+# Create MCP app + session manager at module level so we can wire lifespan
+from mcp_gateway.mcp_server import create_mcp_app  # noqa: E402
+
+_mcp_asgi, _mcp_session_manager = create_mcp_app()
 
 
 @asynccontextmanager
@@ -35,7 +41,12 @@ async def lifespan(app: FastAPI):
     # Seed admin user if needed
     await seed_admin_user()
 
-    yield
+    # Start MCP session manager (required for Streamable HTTP transport)
+    if _mcp_session_manager is not None:
+        async with _mcp_session_manager.run():
+            yield
+    else:
+        yield
 
     logger.info("Shutting down mcp-gateway API")
 
@@ -53,6 +64,11 @@ def create_app() -> FastAPI:
     app.include_router(uploads_router, prefix="/api")
     app.include_router(documents_router, prefix="/api")
     app.include_router(jobs_router, prefix="/api")
+    app.include_router(search_router, prefix="/api")
+
+    # Mount MCP Streamable HTTP endpoint
+    app.mount("/mcp", _mcp_asgi)
+
     return app
 
 

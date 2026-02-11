@@ -1,12 +1,17 @@
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import text
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from mcp_gateway.api.deps import Principal, require_admin
+from mcp_gateway.audit import log_audit
 from mcp_gateway.db import get_session
 from mcp_gateway.minio_client import get_minio_client
+from mcp_gateway.models import Chunk, Document, DocumentPage, DocumentVersion, IngestionJob
+from mcp_gateway.models.enums import JobStage, JobStatus
 from mcp_gateway.redis import get_async_redis
 
 logger = logging.getLogger(__name__)
@@ -53,3 +58,137 @@ async def health_check(
         "status": "healthy" if overall else "degraded",
         "checks": checks,
     }
+
+
+@router.post("/system/purge-run")
+async def purge_run(
+    admin: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Hard-delete documents soft-deleted more than 60 days ago, including MinIO objects."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=60)
+
+    result = await session.execute(
+        select(Document).where(
+            Document.status == "deleted",
+            Document.updated_at < cutoff,
+        )
+    )
+    docs = result.scalars().all()
+
+    if not docs:
+        return {"purged": 0}
+
+    minio = get_minio_client()
+    purged = 0
+
+    for doc in docs:
+        # Load versions for MinIO cleanup
+        versions_result = await session.execute(
+            select(DocumentVersion).where(DocumentVersion.doc_id == doc.doc_id)
+        )
+        versions = versions_result.scalars().all()
+
+        for ver in versions:
+            # Delete MinIO object
+            try:
+                minio.remove_object(ver.original_bucket, ver.original_object_key)
+            except Exception as e:
+                logger.warning(
+                    "Failed to delete MinIO object %s/%s: %s",
+                    ver.original_bucket, ver.original_object_key, e,
+                )
+
+            # Cascade delete DB rows: chunks, pages, ingestion_jobs
+            await session.execute(
+                delete(Chunk).where(Chunk.version_id == ver.version_id)
+            )
+            await session.execute(
+                delete(DocumentPage).where(DocumentPage.version_id == ver.version_id)
+            )
+            await session.execute(
+                delete(IngestionJob).where(IngestionJob.version_id == ver.version_id)
+            )
+
+        # Delete versions and document
+        await session.execute(
+            delete(DocumentVersion).where(DocumentVersion.doc_id == doc.doc_id)
+        )
+        await session.delete(doc)
+        purged += 1
+
+    await log_audit(
+        session, user_id=admin.id, action="purge_run",
+        detail={"purged_count": purged},
+    )
+    await session.commit()
+
+    logger.info("Purged %d documents", purged)
+    return {"purged": purged}
+
+
+@router.post("/system/reaper-run")
+async def reaper_run(
+    admin: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Find ingestion jobs marked running in DB but absent from RQ, reset and re-enqueue."""
+    from redis import Redis
+    from rq import Queue
+    from rq.job import Job as RQJob
+
+    from mcp_gateway.config import get_settings
+    from mcp_gateway.worker.pipeline import enqueue_stage
+
+    settings = get_settings()
+    conn = Redis.from_url(settings.redis_url)
+
+    # Get all currently running jobs from DB
+    result = await session.execute(
+        select(IngestionJob).where(IngestionJob.status == JobStatus.running)
+    )
+    running_jobs = result.scalars().all()
+
+    if not running_jobs:
+        return {"reaped": 0}
+
+    # Check which RQ queues have these jobs
+    io_queue = Queue("io", connection=conn)
+    cpu_queue = Queue("cpu", connection=conn)
+
+    # Build set of all known RQ job IDs (started + queued registries)
+    rq_job_ids: set[str] = set()
+    for q in [io_queue, cpu_queue]:
+        rq_job_ids.update(q.started_job_registry.get_job_ids())
+        rq_job_ids.update(q.get_job_ids())
+
+    reaped = 0
+    for job in running_jobs:
+        # Check if any RQ job references this version_id + stage
+        # Since we don't store RQ job ID in our DB, check by scanning.
+        # A simpler heuristic: if the job has been "running" for > 2x its timeout, reap it.
+        from mcp_gateway.worker.pipeline import STAGE_CONFIG
+        _, timeout, _ = STAGE_CONFIG[job.stage]
+        if job.started_at is None:
+            continue
+        elapsed = (datetime.now(timezone.utc) - job.started_at).total_seconds()
+        if elapsed < timeout * 2:
+            continue
+
+        # Orphan detected — re-enqueue
+        logger.warning(
+            "Reaping orphan job: version=%s stage=%s (running for %.0fs, timeout=%ds)",
+            job.version_id, job.stage.value, elapsed, timeout,
+        )
+        await session.commit()  # flush before sync enqueue_stage
+        enqueue_stage(job.version_id, job.stage)
+        reaped += 1
+
+    await log_audit(
+        session, user_id=admin.id, action="reaper_run",
+        detail={"reaped_count": reaped},
+    )
+    await session.commit()
+
+    logger.info("Reaped %d orphan jobs", reaped)
+    return {"reaped": reaped}
