@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import select
 
 from mcp_gateway.config import get_settings
@@ -30,8 +30,10 @@ async def seed_admin_user() -> None:
 
         admin = User(
             email=settings.admin_email,
-            password_hash=bcrypt.hash(settings.admin_password),
-            role=UserRole.ADMIN,
+            password_hash=bcrypt.hashpw(
+                settings.admin_password.encode(), bcrypt.gensalt()
+            ).decode(),
+            role=UserRole.admin,
             is_active=True,
         )
         session.add(admin)

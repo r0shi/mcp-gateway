@@ -1,8 +1,8 @@
 import uuid
 from typing import Optional
 
-from sqlalchemy import BigInteger, ForeignKey, LargeBinary, Text
-from sqlalchemy.dialects.postgresql import ENUM, UUID
+from sqlalchemy import BigInteger, Enum, ForeignKey, LargeBinary, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mcp_gateway.models.base import Base, uuid_pk, created_at
@@ -19,7 +19,7 @@ class Upload(Base):
         nullable=True,
     )
     source: Mapped[UploadSource] = mapped_column(
-        ENUM(UploadSource, name="upload_source", create_type=False),
+        Enum(UploadSource, name="upload_source", create_type=False),
         nullable=False,
         server_default="web",
     )

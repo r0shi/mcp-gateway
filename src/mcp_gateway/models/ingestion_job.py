@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Text, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Text, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mcp_gateway.models.base import Base, uuid_pk, created_at
@@ -20,11 +20,11 @@ class IngestionJob(Base):
         nullable=False,
     )
     stage: Mapped[JobStage] = mapped_column(
-        ENUM(JobStage, name="job_stage", create_type=False),
+        Enum(JobStage, name="job_stage", create_type=False),
         nullable=False,
     )
     status: Mapped[JobStatus] = mapped_column(
-        ENUM(JobStatus, name="job_status", create_type=False),
+        Enum(JobStatus, name="job_status", create_type=False),
         nullable=False,
         server_default="queued",
     )

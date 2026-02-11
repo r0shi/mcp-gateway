@@ -2,39 +2,39 @@ import enum
 
 
 class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    USER = "user"
+    admin = "admin"
+    user = "user"
 
 
 class UploadSource(str, enum.Enum):
-    WEB = "web"
-    WATCH_FOLDER = "watch_folder"
+    web = "web"
+    watch_folder = "watch_folder"
 
 
 class VersionStatus(str, enum.Enum):
-    QUEUED = "queued"
-    EXTRACTING = "extracting"
-    EXTRACTED = "extracted"
-    OCR_RUNNING = "ocr_running"
-    OCR_DONE = "ocr_done"
-    CHUNKING = "chunking"
-    CHUNKED = "chunked"
-    EMBEDDING = "embedding"
-    EMBEDDED = "embedded"
-    READY = "ready"
-    ERROR = "error"
+    queued = "queued"
+    extracting = "extracting"
+    extracted = "extracted"
+    ocr_running = "ocr_running"
+    ocr_done = "ocr_done"
+    chunking = "chunking"
+    chunked = "chunked"
+    embedding = "embedding"
+    embedded = "embedded"
+    ready = "ready"
+    error = "error"
 
 
 class JobStage(str, enum.Enum):
-    EXTRACT = "extract"
-    OCR = "ocr"
-    CHUNK = "chunk"
-    EMBED = "embed"
-    FINALIZE = "finalize"
+    extract = "extract"
+    ocr = "ocr"
+    chunk = "chunk"
+    embed = "embed"
+    finalize = "finalize"
 
 
 class JobStatus(str, enum.Enum):
-    QUEUED = "queued"
-    RUNNING = "running"
-    DONE = "done"
-    ERROR = "error"
+    queued = "queued"
+    running = "running"
+    done = "done"
+    error = "error"

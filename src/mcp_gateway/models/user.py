@@ -2,8 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Text, text
-from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy import Boolean, DateTime, Enum, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mcp_gateway.models.base import Base, uuid_pk, created_at
@@ -17,7 +16,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        ENUM(UserRole, name="user_role", create_type=False),
+        Enum(UserRole, name="user_role", create_type=False),
         nullable=False,
         server_default="user",
     )
