@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     max_file_size_mb: int = Field(default=200)
     max_batch_size_mb: int = Field(default=2048)
 
+    # Chunking
+    chunk_target_size: int = Field(default=1000)
+    chunk_overlap: int = Field(default=150)
+
+    # Synthetic page size for non-paginated formats (TXT, RTF, DOCX)
+    synthetic_page_chars: int = Field(default=3000)
+
 
 _settings: Settings | None = None
 

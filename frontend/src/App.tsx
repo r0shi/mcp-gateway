@@ -19,9 +19,9 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
-          <Route path="/" element={<DocumentsPage />} />
+          <Route path="/" element={<UploadPage />} />
+          <Route path="/docs" element={<DocumentsPage />} />
           <Route path="/docs/:id" element={<DocumentDetailPage />} />
-          <Route path="/upload" element={<UploadPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route element={<AdminRoute />}>
             <Route path="/admin/users" element={<UsersPage />} />

@@ -32,23 +32,62 @@ def _extract_pdf(data: bytes) -> list[tuple[int, str]]:
     return pages
 
 
+def _paginate_text(text: str, target: int) -> list[tuple[int, str]]:
+    """Split a long text into synthetic pages at paragraph boundaries.
+
+    Returns [(page_num, text)] with 1-based page numbers.
+    """
+    if not text or target <= 0:
+        return [(1, text)]
+
+    if len(text) <= target:
+        return [(1, text)]
+
+    pages: list[tuple[int, str]] = []
+    start = 0
+    page_num = 1
+    text_len = len(text)
+
+    while start < text_len:
+        end = min(start + target, text_len)
+
+        if end < text_len:
+            # Try to break at a paragraph boundary (double newline)
+            para = text.rfind("\n\n", start, end)
+            if para > start + target // 2:
+                end = para + 2  # include the double newline
+            else:
+                # Fall back to single newline
+                nl = text.rfind("\n", start, end)
+                if nl > start + target // 2:
+                    end = nl + 1
+
+        pages.append((page_num, text[start:end]))
+        page_num += 1
+        start = end
+
+    return pages
+
+
 def _extract_docx(data: bytes) -> list[tuple[int, str]]:
-    """Extract text from DOCX. Treats entire document as page 1."""
+    """Extract text from DOCX, split into synthetic pages."""
     from docx import Document as DocxDocument
 
+    settings = get_settings()
     doc = DocxDocument(io.BytesIO(data))
     full_text = "\n".join(p.text for p in doc.paragraphs)
-    return [(1, full_text)]
+    return _paginate_text(full_text, settings.synthetic_page_chars)
 
 
 def _extract_txt(data: bytes) -> list[tuple[int, str]]:
-    """Plain text — single page."""
+    """Plain text, split into synthetic pages."""
+    settings = get_settings()
     text = data.decode("utf-8", errors="replace")
-    return [(1, text)]
+    return _paginate_text(text, settings.synthetic_page_chars)
 
 
 def _extract_via_tika(data: bytes, mime_type: str) -> list[tuple[int, str]]:
-    """Fallback extraction via Apache Tika."""
+    """Fallback extraction via Apache Tika, split into synthetic pages."""
     settings = get_settings()
     resp = httpx.put(
         f"{settings.tika_url}/tika",
@@ -58,7 +97,7 @@ def _extract_via_tika(data: bytes, mime_type: str) -> list[tuple[int, str]]:
     )
     resp.raise_for_status()
     text = resp.text.strip()
-    return [(1, text)]
+    return _paginate_text(text, settings.synthetic_page_chars)
 
 
 def _alpha_ratio(text: str) -> float:
@@ -88,8 +127,14 @@ def run_extract(version_id: uuid.UUID) -> None:
 
         mime = (version.mime_type or "").lower()
 
-        # Dispatch by mime type
-        if mime == "application/pdf" or version.original_object_key.endswith(".pdf"):
+        # Sniff RTF content regardless of extension/MIME — files are often
+        # mislabeled (e.g. .txt containing RTF markup)
+        is_rtf = data[:5] == b"{\\rtf"
+
+        # Dispatch by mime type (with content sniffing overrides)
+        if is_rtf or mime == "text/rtf" or version.original_object_key.endswith(".rtf"):
+            pages = _extract_via_tika(data, "text/rtf")
+        elif mime == "application/pdf" or version.original_object_key.endswith(".pdf"):
             pages = _extract_pdf(data)
         elif mime in (
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -101,8 +146,6 @@ def run_extract(version_id: uuid.UUID) -> None:
         elif mime in ("image/jpeg", "image/png", "image/tiff"):
             # Image — create empty page, OCR will fill it
             pages = [(1, "")]
-        elif mime == "text/rtf" or version.original_object_key.endswith(".rtf"):
-            pages = _extract_via_tika(data, mime or "text/rtf")
         else:
             # Fallback to Tika
             pages = _extract_via_tika(data, mime or "application/octet-stream")
@@ -130,7 +173,7 @@ def run_extract(version_id: uuid.UUID) -> None:
         # Determine if OCR is needed
         is_image = mime in ("image/jpeg", "image/png", "image/tiff")
         is_pdf = mime == "application/pdf" or version.original_object_key.endswith(".pdf")
-        is_never_ocr = mime in (
+        is_never_ocr = is_rtf or mime in (
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "text/plain", "text/rtf",
         ) or version.original_object_key.endswith((".docx", ".txt", ".rtf"))

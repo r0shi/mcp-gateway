@@ -14,14 +14,13 @@ from mcp_gateway.worker.pipeline import mark_stage_done, mark_stage_running
 
 logger = logging.getLogger(__name__)
 
-TARGET_SIZE = 1000
-OVERLAP = 150
+from mcp_gateway.config import get_settings
 
 # Sentence boundary pattern
 SENTENCE_RE = re.compile(r'(?<=[.!?])\s+')
 
 
-def _split_text(text: str, target: int = TARGET_SIZE, overlap: int = OVERLAP) -> list[tuple[int, int]]:
+def _split_text(text: str, target: int = 1000, overlap: int = 150) -> list[tuple[int, int]]:
     """Return list of (char_start, char_end) for chunks.
 
     Splits at paragraph > sentence > word boundaries.
@@ -147,7 +146,8 @@ def run_chunk(version_id: uuid.UUID) -> None:
         session.flush()
 
         # Split into chunks
-        chunk_ranges = _split_text(full_text)
+        settings = get_settings()
+        chunk_ranges = _split_text(full_text, target=settings.chunk_target_size, overlap=settings.chunk_overlap)
 
         for i, (char_start, char_end) in enumerate(chunk_ranges):
             chunk_text = full_text[char_start:char_end]

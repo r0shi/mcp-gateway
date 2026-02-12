@@ -66,6 +66,93 @@ function JobStatusBadge({ status }: { status: string }) {
   )
 }
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}) {
+  if (totalPages <= 1) return null
+
+  // Build page number list with ellipsis
+  const pages: (number | '...')[] = []
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i)
+  } else {
+    pages.push(1)
+    if (currentPage > 3) pages.push('...')
+    const start = Math.max(2, currentPage - 1)
+    const end = Math.min(totalPages - 1, currentPage + 1)
+    for (let i = start; i <= end; i++) pages.push(i)
+    if (currentPage < totalPages - 2) pages.push('...')
+    pages.push(totalPages)
+  }
+
+  const btn =
+    'inline-flex items-center justify-center min-w-[2rem] h-8 rounded text-sm font-medium'
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => onPageChange(1)}
+        disabled={currentPage === 1}
+        className={`${btn} px-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default`}
+        title="First page"
+      >
+        &laquo;
+      </button>
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className={`${btn} px-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default`}
+        title="Previous page"
+      >
+        &lsaquo;
+      </button>
+      {pages.map((p, i) =>
+        p === '...' ? (
+          <span key={`ellipsis-${i}`} className={`${btn} px-1 text-gray-400`}>
+            &hellip;
+          </span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onPageChange(p)}
+            className={`${btn} px-1.5 ${
+              p === currentPage
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            {p}
+          </button>
+        ),
+      )}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className={`${btn} px-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default`}
+        title="Next page"
+      >
+        &rsaquo;
+      </button>
+      <button
+        onClick={() => onPageChange(totalPages)}
+        disabled={currentPage === totalPages}
+        className={`${btn} px-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default`}
+        title="Last page"
+      >
+        &raquo;
+      </button>
+    </div>
+  )
+}
+
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -76,6 +163,8 @@ export default function DocumentDetailPage() {
   const [error, setError] = useState('')
   const [showContent, setShowContent] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [contentPage, setContentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   useEffect(() => {
     get<DocumentDetail>(`/api/docs/${id}`)
@@ -240,35 +329,93 @@ export default function DocumentDetailPage() {
           View Content
         </button>
       ) : content ? (
-        <div className="space-y-3">
-          <p className="text-sm text-gray-500">
-            {content.total_chars.toLocaleString()} total characters,{' '}
-            {content.pages.length} pages
-          </p>
-          {content.pages.map((page) => (
-            <div
-              key={page.page_num}
-              className="rounded border border-gray-200 bg-white p-4"
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">
-                  Page {page.page_num}
-                </span>
-                {page.ocr_used && (
-                  <span className="text-xs text-gray-400">
-                    OCR{' '}
-                    {page.ocr_confidence != null
-                      ? `(${(page.ocr_confidence * 100).toFixed(0)}%)`
-                      : ''}
-                  </span>
-                )}
+        (() => {
+          const totalPages = Math.max(1, Math.ceil(content.pages.length / pageSize))
+          const clampedPage = Math.min(contentPage, totalPages)
+          const startIdx = (clampedPage - 1) * pageSize
+          const visiblePages = content.pages.slice(startIdx, startIdx + pageSize)
+
+          return (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">
+                  {content.total_chars.toLocaleString()} total characters,{' '}
+                  {content.pages.length} pages
+                </p>
+                <div className="flex items-center gap-2 text-sm">
+                  <label htmlFor="page-size" className="text-gray-500">
+                    Show
+                  </label>
+                  <select
+                    id="page-size"
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value))
+                      setContentPage(1)
+                    }}
+                    className="rounded border border-gray-300 px-2 py-1 text-sm"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-gray-500">per page</span>
+                </div>
               </div>
-              <pre className="whitespace-pre-wrap text-sm text-gray-800">
-                {page.text}
-              </pre>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>
+                    Pages {startIdx + 1}&ndash;
+                    {Math.min(startIdx + pageSize, content.pages.length)} of{' '}
+                    {content.pages.length}
+                  </span>
+                  <Pagination
+                    currentPage={clampedPage}
+                    totalPages={totalPages}
+                    onPageChange={setContentPage}
+                  />
+                </div>
+              )}
+
+              {visiblePages.map((page) => (
+                <div
+                  key={page.page_num}
+                  className="rounded border border-gray-200 bg-white p-4"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Page {page.page_num}
+                    </span>
+                    {page.ocr_used && (
+                      <span className="text-xs text-gray-400">
+                        OCR{' '}
+                        {page.ocr_confidence != null
+                          ? `(${(page.ocr_confidence * 100).toFixed(0)}%)`
+                          : ''}
+                      </span>
+                    )}
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">
+                    {page.text}
+                  </pre>
+                </div>
+              ))}
+
+              {totalPages > 1 && (
+                <div className="flex justify-end">
+                  <Pagination
+                    currentPage={clampedPage}
+                    totalPages={totalPages}
+                    onPageChange={setContentPage}
+                  />
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          )
+        })()
       ) : (
         <div className="text-gray-500">Loading content...</div>
       )}

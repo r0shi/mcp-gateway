@@ -22,10 +22,10 @@ export default function Layout() {
                 LKA
               </Link>
               <NavLink to="/" end className={linkClass}>
-                Documents
-              </NavLink>
-              <NavLink to="/upload" className={linkClass}>
                 Upload
+              </NavLink>
+              <NavLink to="/docs" className={linkClass}>
+                Documents
               </NavLink>
               <NavLink to="/search" className={linkClass}>
                 Search
