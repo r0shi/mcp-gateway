@@ -1,0 +1,35 @@
+import { Route, Routes } from 'react-router-dom'
+import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute'
+import LoginPage from './pages/LoginPage'
+import DocumentsPage from './pages/DocumentsPage'
+import DocumentDetailPage from './pages/DocumentDetailPage'
+import UploadPage from './pages/UploadPage'
+import SearchPage from './pages/SearchPage'
+import UsersPage from './pages/UsersPage'
+import ApiKeysPage from './pages/ApiKeysPage'
+import SetupPage from './pages/SetupPage'
+import SystemPage from './pages/SystemPage'
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/setup" element={<SetupPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<Layout />}>
+          <Route path="/" element={<DocumentsPage />} />
+          <Route path="/docs/:id" element={<DocumentDetailPage />} />
+          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/users" element={<UsersPage />} />
+            <Route path="/admin/keys" element={<ApiKeysPage />} />
+            <Route path="/admin/system" element={<SystemPage />} />
+          </Route>
+        </Route>
+      </Route>
+    </Routes>
+  )
+}

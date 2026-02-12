@@ -33,8 +33,6 @@ class Settings(BaseSettings):
 
     # App
     secret_key: str = Field(default="change-me-in-production")
-    admin_email: str = Field(default="admin@local.host")
-    admin_password: str = Field(default="changeme123")
     log_level: str = Field(default="INFO")
 
     # JWT

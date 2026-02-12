@@ -14,6 +14,7 @@ from mcp_gateway.auth import hash_password
 from mcp_gateway.db import get_session
 from mcp_gateway.models import User
 from mcp_gateway.models.enums import UserRole
+from mcp_gateway.password_validation import validate_password
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["users"])
@@ -48,6 +49,11 @@ async def create_user(
     # Validate role
     if body.role not in ("admin", "user"):
         raise HTTPException(status_code=422, detail="Role must be 'admin' or 'user'")
+
+    # Validate password
+    pw_errors = validate_password(body.password, body.email)
+    if pw_errors:
+        raise HTTPException(status_code=422, detail=pw_errors)
 
     # Check duplicate email
     existing = await session.execute(select(User).where(User.email == body.email))
@@ -122,6 +128,10 @@ async def update_user(
         user.email = body.email
 
     if body.password is not None:
+        email_for_check = body.email if body.email is not None else user.email
+        pw_errors = validate_password(body.password, email_for_check)
+        if pw_errors:
+            raise HTTPException(status_code=422, detail=pw_errors)
         user.password_hash = hash_password(body.password)
 
     if body.role is not None:

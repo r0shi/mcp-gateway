@@ -1,17 +1,20 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from mcp_gateway.config import get_settings
 from mcp_gateway.minio_client import ensure_bucket_exists
-from mcp_gateway.seed import seed_admin_user
 from mcp_gateway.api.routes.api_keys import router as api_keys_router
 from mcp_gateway.api.routes.auth import router as auth_router
 from mcp_gateway.api.routes.documents import router as documents_router
 from mcp_gateway.api.routes.jobs import router as jobs_router
 from mcp_gateway.api.routes.search import router as search_router
+from mcp_gateway.api.routes.setup import router as setup_router
 from mcp_gateway.api.routes.system import router as system_router
 from mcp_gateway.api.routes.uploads import router as uploads_router
 from mcp_gateway.api.routes.users import router as users_router
@@ -38,9 +41,6 @@ async def lifespan(app: FastAPI):
     # Ensure MinIO bucket exists
     ensure_bucket_exists()
 
-    # Seed admin user if needed
-    await seed_admin_user()
-
     # Start MCP session manager (required for Streamable HTTP transport)
     if _mcp_session_manager is not None:
         async with _mcp_session_manager.run():
@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(system_router, prefix="/api")
+    app.include_router(setup_router, prefix="/api")
     app.include_router(auth_router, prefix="/api")
     app.include_router(users_router, prefix="/api")
     app.include_router(api_keys_router, prefix="/api")
@@ -68,6 +69,23 @@ def create_app() -> FastAPI:
 
     # Mount MCP Streamable HTTP endpoint
     app.mount("/mcp", _mcp_asgi)
+
+    # Serve SPA static files (must be last — catches all unmatched routes)
+    static_dir = Path("/app/static")
+    if static_dir.is_dir():
+        # Serve actual static assets (JS, CSS, images)
+        app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
+
+        # SPA fallback: serve index.html for all non-API, non-asset routes
+        index_html = static_dir / "index.html"
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str):
+            # Try to serve a real file first (favicon.ico, etc.)
+            file = static_dir / full_path
+            if full_path and file.is_file():
+                return FileResponse(file)
+            return FileResponse(index_html)
 
     return app
 

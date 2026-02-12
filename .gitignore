@@ -8,10 +8,16 @@ build/
 .env
 .uv/
 
-# IDE
+# IDE / tools
 .idea/
 .vscode/
 *.swp
+.claude/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
 
 # Docker override
 docker-compose.override.yml

@@ -3,12 +3,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mcp_gateway.api.deps import Principal, require_admin
 from mcp_gateway.audit import log_audit
 from mcp_gateway.db import get_session
+from mcp_gateway.models import User
 from mcp_gateway.minio_client import get_minio_client
 from mcp_gateway.models import Chunk, Document, DocumentPage, DocumentVersion, IngestionJob
 from mcp_gateway.models.enums import JobStage, JobStatus
@@ -16,6 +17,15 @@ from mcp_gateway.redis import get_async_redis
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["system"])
+
+
+@router.get("/system/setup-status")
+async def setup_status(
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, bool]:
+    """Check whether initial setup is needed (no users exist)."""
+    count = await session.scalar(select(func.count()).select_from(User))
+    return {"needs_setup": count == 0}
 
 
 @router.get("/system/health")
