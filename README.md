@@ -156,11 +156,45 @@ npm install
 npm run dev
 ```
 
-## Stopping
+## Managing the Stack
+
+**Start** (after a previous `docker compose down`, or first time):
 
 ```bash
-docker compose down       # stop containers, keep data
-docker compose down -v    # stop containers AND delete all data
+docker compose up --build      # build images and start (foreground)
+docker compose up --build -d   # same, but detached (background)
+```
+
+**Restart a single service** (e.g., after code changes to the app):
+
+```bash
+docker compose up --build -d app   # rebuild and restart just the app container
+```
+
+**Stop** (keeps data volumes intact — documents, database, etc.):
+
+```bash
+docker compose down
+```
+
+**Start again** after stopping (no rebuild needed if nothing changed):
+
+```bash
+docker compose up -d
+```
+
+**Full reset** (destroys all data — database, uploaded files, everything):
+
+```bash
+docker compose down -v
+```
+
+**View logs:**
+
+```bash
+docker compose logs -f          # tail all services
+docker compose logs -f app      # tail just the app
+docker compose logs -f worker-io worker-cpu   # tail both workers
 ```
 
 ## License
