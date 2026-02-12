@@ -70,6 +70,102 @@ async def health_check(
     }
 
 
+@router.get("/system/stats")
+async def system_stats(
+    admin: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Return per-service performance/health stats (admin only)."""
+    from redis import Redis
+    from rq import Queue
+
+    from mcp_gateway.config import get_settings
+
+    settings = get_settings()
+    result: dict[str, Any] = {}
+
+    # ── PostgreSQL stats ──
+    try:
+        row = await session.execute(text(
+            "SELECT pg_database_size(current_database()) AS db_size"
+        ))
+        db_size = row.scalar() or 0
+
+        row = await session.execute(text(
+            "SELECT count(*) FROM pg_stat_activity WHERE state IS NOT NULL"
+        ))
+        active_conns = row.scalar() or 0
+
+        row = await session.execute(text(
+            "SELECT sum(heap_blks_hit)::float "
+            "/ nullif(sum(heap_blks_hit + heap_blks_read), 0) "
+            "FROM pg_statio_user_tables"
+        ))
+        cache_hit = row.scalar()
+
+        row = await session.execute(text("SELECT count(*) FROM chunks"))
+        total_chunks = row.scalar() or 0
+
+        row = await session.execute(text(
+            "SELECT coalesce(sum(n_dead_tup), 0) FROM pg_stat_user_tables"
+        ))
+        dead_tuples = row.scalar() or 0
+
+        result["postgres"] = {
+            "db_size_mb": round(db_size / (1024 * 1024), 1),
+            "active_connections": int(active_conns),
+            "cache_hit_ratio": round(float(cache_hit), 4) if cache_hit is not None else None,
+            "total_chunks": int(total_chunks),
+            "dead_tuples": int(dead_tuples),
+        }
+    except Exception as e:
+        logger.error("Failed to collect Postgres stats: %s", e)
+        result["postgres"] = {"error": str(e)}
+
+    # ── Redis stats ──
+    try:
+        redis = get_async_redis()
+        info_mem = await redis.info("memory")
+        info_clients = await redis.info("clients")
+        await redis.aclose()
+
+        # RQ queue depths (sync client needed)
+        conn = Redis.from_url(settings.redis_url)
+        io_depth = Queue("io", connection=conn).count
+        cpu_depth = Queue("cpu", connection=conn).count
+        conn.close()
+
+        result["redis"] = {
+            "used_memory_mb": round(info_mem.get("used_memory", 0) / (1024 * 1024), 1),
+            "io_queue_depth": io_depth,
+            "cpu_queue_depth": cpu_depth,
+            "connected_clients": info_clients.get("connected_clients", 0),
+        }
+    except Exception as e:
+        logger.error("Failed to collect Redis stats: %s", e)
+        result["redis"] = {"error": str(e)}
+
+    # ── MinIO stats ──
+    try:
+        client = get_minio_client()
+        obj_count = 0
+        total_size = 0
+        for obj in client.list_objects("originals", recursive=True):
+            obj_count += 1
+            total_size += obj.size or 0
+            if obj_count >= 10_000:
+                break
+        result["minio"] = {
+            "object_count": obj_count,
+            "total_size_mb": round(total_size / (1024 * 1024), 1),
+        }
+    except Exception as e:
+        logger.error("Failed to collect MinIO stats: %s", e)
+        result["minio"] = {"error": str(e)}
+
+    return result
+
+
 @router.post("/system/purge-run")
 async def purge_run(
     admin: Principal = Depends(require_admin),

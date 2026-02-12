@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { get, post, del } from '../api'
 import { useAuth } from '../auth'
+import { useJobEvents, type JobEvent } from '../hooks/useJobEvents'
 
 interface JobInfo {
   job_id: string
@@ -53,17 +54,59 @@ interface ContentResponse {
 }
 
 function JobStatusBadge({ status }: { status: string }) {
-  let cls = 'bg-gray-100 text-gray-600'
-  if (status === 'completed') cls = 'bg-green-100 text-green-700'
-  else if (status === 'failed') cls = 'bg-red-100 text-red-700'
-  else if (status === 'running') cls = 'bg-blue-100 text-blue-700'
-  else if (status === 'queued') cls = 'bg-amber-100 text-amber-700'
+  let cls = 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+  if (status === 'done') cls = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+  else if (status === 'error') cls = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+  else if (status === 'running') cls = 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 animate-pulse'
+  else if (status === 'queued') cls = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
 
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
       {status}
     </span>
   )
+}
+
+function VersionBanner({ version }: { version: VersionInfo }) {
+  const hasJobs = version.jobs.length > 0
+  const allDone = hasJobs && version.jobs.every((j) => j.status === 'done')
+  const hasError = version.jobs.some((j) => j.status === 'error')
+  const runningJob = version.jobs.find((j) => j.status === 'running' || j.status === 'queued')
+
+  if (version.status === 'ready' || allDone) {
+    return (
+      <div className="mb-3 flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-900/20 px-3 py-2 text-sm text-green-700 dark:text-green-400">
+        <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        Ingestion complete
+      </div>
+    )
+  }
+
+  if (hasError) {
+    const errorJob = version.jobs.find((j) => j.status === 'error')
+    return (
+      <div className="mb-3 flex items-center gap-2 rounded-md bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-400">
+        <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Error in {errorJob?.stage}{errorJob?.error ? `: ${errorJob.error}` : ''}
+      </div>
+    )
+  }
+
+  if (runningJob) {
+    const doneCount = version.jobs.filter((j) => j.status === 'done').length
+    return (
+      <div className="mb-3 flex items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+        <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        Processing — stage {doneCount + 1} of {version.jobs.length}
+      </div>
+    )
+  }
+
+  return null
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
@@ -101,7 +144,7 @@ function Pagination({
       <button
         onClick={() => onPageChange(1)}
         disabled={currentPage === 1}
-        className={`${btn} px-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default`}
+        className={`${btn} px-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-default`}
         title="First page"
       >
         &laquo;
@@ -109,7 +152,7 @@ function Pagination({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className={`${btn} px-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default`}
+        className={`${btn} px-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-default`}
         title="Previous page"
       >
         &lsaquo;
@@ -126,7 +169,7 @@ function Pagination({
             className={`${btn} px-1.5 ${
               p === currentPage
                 ? 'bg-blue-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             {p}
@@ -136,7 +179,7 @@ function Pagination({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className={`${btn} px-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default`}
+        className={`${btn} px-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-default`}
         title="Next page"
       >
         &rsaquo;
@@ -144,7 +187,7 @@ function Pagination({
       <button
         onClick={() => onPageChange(totalPages)}
         disabled={currentPage === totalPages}
-        className={`${btn} px-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default`}
+        className={`${btn} px-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-default`}
         title="Last page"
       >
         &raquo;
@@ -156,7 +199,7 @@ function Pagination({
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
   const [doc, setDoc] = useState<DocumentDetail | null>(null)
   const [content, setContent] = useState<ContentResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -164,14 +207,61 @@ export default function DocumentDetailPage() {
   const [showContent, setShowContent] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [contentPage, setContentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(user?.preferences?.page_size || 10)
 
-  useEffect(() => {
-    get<DocumentDetail>(`/api/docs/${id}`)
+  function loadDoc() {
+    return get<DocumentDetail>(`/api/docs/${id}`)
       .then(setDoc)
       .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadDoc().finally(() => setLoading(false))
   }, [id])
+
+  // SSE: live job updates
+  const onJobEvent = useCallback(
+    (event: JobEvent) => {
+      setDoc((prev) => {
+        if (!prev) return prev
+        // Find the version this event belongs to
+        const vIdx = prev.versions.findIndex(
+          (v) => v.version_id === event.version_id,
+        )
+        if (vIdx === -1) return prev
+
+        const versions = [...prev.versions]
+        const version = { ...versions[vIdx], jobs: [...versions[vIdx].jobs] }
+        versions[vIdx] = version
+
+        // Find the matching job
+        const jIdx = version.jobs.findIndex((j) => j.stage === event.stage)
+        if (jIdx === -1) return prev
+
+        const job = { ...version.jobs[jIdx] }
+        job.status = event.status
+        if (event.progress !== undefined) job.progress_current = event.progress
+        if (event.total !== undefined) job.progress_total = event.total
+        if (event.error) job.error = event.error
+        if (event.status === 'done') job.finished_at = new Date().toISOString()
+        if (event.status === 'running' && !job.started_at)
+          job.started_at = new Date().toISOString()
+        version.jobs[jIdx] = job
+
+        // Check if all jobs are done → refresh from API for final state
+        const allDone = version.jobs.every((j) => j.status === 'done')
+        if (allDone) {
+          // Async refresh — won't affect this render, next state update will
+          loadDoc()
+        }
+
+        return { ...prev, versions }
+      })
+    },
+    [id],
+  )
+
+  useJobEvents(onJobEvent)
 
   async function loadContent() {
     setShowContent(true)
@@ -209,9 +299,9 @@ export default function DocumentDetailPage() {
     }
   }
 
-  if (loading) return <div className="text-gray-500">Loading...</div>
-  if (error && !doc) return <div className="text-red-600">Error: {error}</div>
-  if (!doc) return <div className="text-gray-500">Not found</div>
+  if (loading) return <div className="text-gray-500 dark:text-gray-400">Loading...</div>
+  if (error && !doc) return <div className="text-red-600 dark:text-red-400">Error: {error}</div>
+  if (!doc) return <div className="text-gray-500 dark:text-gray-400">Not found</div>
 
   return (
     <div>
@@ -219,7 +309,7 @@ export default function DocumentDetailPage() {
         <div>
           <h1 className="text-xl font-bold">{doc.title}</h1>
           {doc.canonical_filename && (
-            <p className="text-sm text-gray-500">{doc.canonical_filename}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{doc.canonical_filename}</p>
           )}
         </div>
         {isAdmin && (
@@ -243,12 +333,12 @@ export default function DocumentDetailPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
 
-      <div className="mb-2 text-sm text-gray-500">
+      <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
         Created {new Date(doc.created_at).toLocaleString()} | Updated{' '}
         {new Date(doc.updated_at).toLocaleString()}
       </div>
@@ -257,15 +347,16 @@ export default function DocumentDetailPage() {
       {doc.versions.map((v) => (
         <div
           key={v.version_id}
-          className="mb-4 rounded-lg border border-gray-200 bg-white p-4"
+          className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
         >
+          <VersionBanner version={v} />
           <div className="mb-2 flex items-center justify-between">
             <div className="text-sm">
               <span className="font-medium">
                 {v.mime_type || 'unknown type'}
               </span>
               {v.size_bytes != null && (
-                <span className="ml-2 text-gray-500">
+                <span className="ml-2 text-gray-500 dark:text-gray-400">
                   {(v.size_bytes / 1024).toFixed(0)} KB
                 </span>
               )}
@@ -273,7 +364,7 @@ export default function DocumentDetailPage() {
             <JobStatusBadge status={v.status} />
           </div>
           {v.error && (
-            <div className="mb-2 text-sm text-red-600">Error: {v.error}</div>
+            <div className="mb-2 text-sm text-red-600 dark:text-red-400">Error: {v.error}</div>
           )}
           <div className="text-xs text-gray-400">
             {v.extracted_chars != null && (
@@ -286,7 +377,7 @@ export default function DocumentDetailPage() {
           {v.jobs.length > 0 && (
             <table className="mt-3 w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-xs text-gray-500">
+                <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-xs text-gray-500 dark:text-gray-400">
                   <th className="pb-1 pr-3">Stage</th>
                   <th className="pb-1 pr-3">Status</th>
                   <th className="pb-1 pr-3">Progress</th>
@@ -295,12 +386,12 @@ export default function DocumentDetailPage() {
               </thead>
               <tbody>
                 {v.jobs.map((j) => (
-                  <tr key={j.job_id} className="border-b border-gray-100">
+                  <tr key={j.job_id} className="border-b border-gray-100 dark:border-gray-700">
                     <td className="py-1 pr-3 font-medium">{j.stage}</td>
                     <td className="py-1 pr-3">
                       <JobStatusBadge status={j.status} />
                     </td>
-                    <td className="py-1 pr-3 text-gray-500">
+                    <td className="py-1 pr-3 text-gray-500 dark:text-gray-400">
                       {j.progress_total
                         ? `${j.progress_current || 0}/${j.progress_total}`
                         : '—'}
@@ -324,7 +415,7 @@ export default function DocumentDetailPage() {
       {!showContent ? (
         <button
           onClick={loadContent}
-          className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+          className="rounded-md bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
         >
           View Content
         </button>
@@ -338,12 +429,12 @@ export default function DocumentDetailPage() {
           return (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {content.total_chars.toLocaleString()} total characters,{' '}
                   {content.pages.length} pages
                 </p>
                 <div className="flex items-center gap-2 text-sm">
-                  <label htmlFor="page-size" className="text-gray-500">
+                  <label htmlFor="page-size" className="text-gray-500 dark:text-gray-400">
                     Show
                   </label>
                   <select
@@ -353,7 +444,7 @@ export default function DocumentDetailPage() {
                       setPageSize(Number(e.target.value))
                       setContentPage(1)
                     }}
-                    className="rounded border border-gray-300 px-2 py-1 text-sm"
+                    className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-gray-100"
                   >
                     {PAGE_SIZE_OPTIONS.map((n) => (
                       <option key={n} value={n}>
@@ -361,12 +452,12 @@ export default function DocumentDetailPage() {
                       </option>
                     ))}
                   </select>
-                  <span className="text-gray-500">per page</span>
+                  <span className="text-gray-500 dark:text-gray-400">per page</span>
                 </div>
               </div>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-between text-sm text-gray-500">
+                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                   <span>
                     Pages {startIdx + 1}&ndash;
                     {Math.min(startIdx + pageSize, content.pages.length)} of{' '}
@@ -383,10 +474,10 @@ export default function DocumentDetailPage() {
               {visiblePages.map((page) => (
                 <div
                   key={page.page_num}
-                  className="rounded border border-gray-200 bg-white p-4"
+                  className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
                 >
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Page {page.page_num}
                     </span>
                     {page.ocr_used && (
@@ -398,7 +489,7 @@ export default function DocumentDetailPage() {
                       </span>
                     )}
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
                     {page.text}
                   </pre>
                 </div>
@@ -417,7 +508,7 @@ export default function DocumentDetailPage() {
           )
         })()
       ) : (
-        <div className="text-gray-500">Loading content...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading content...</div>
       )}
     </div>
   )
