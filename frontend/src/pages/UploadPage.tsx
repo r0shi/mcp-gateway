@@ -96,7 +96,7 @@ export default function UploadPage() {
       <h1 className="mb-4 text-xl font-bold">Upload Documents</h1>
 
       {error && (
-        <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
@@ -110,15 +110,15 @@ export default function UploadPage() {
         onDrop={handleDrop}
         className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors ${
           dragOver
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 bg-white'
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
         }`}
       >
         {uploading ? (
-          <p className="text-gray-500">Uploading...</p>
+          <p className="text-gray-500 dark:text-gray-400">Uploading...</p>
         ) : (
           <>
-            <p className="mb-2 text-gray-600">
+            <p className="mb-2 text-gray-600 dark:text-gray-400">
               Drag and drop files here, or click to browse
             </p>
             <p className="mb-4 text-xs text-gray-400">
@@ -178,13 +178,13 @@ function FileResult({
 
   if (confirmed) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-        <p className="text-sm font-medium text-green-700">
+      <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
+        <p className="text-sm font-medium text-green-700 dark:text-green-400">
           {result.filename} — Processing started
         </p>
         <Link
           to={`/docs/${confirmed.doc_id}`}
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
         >
           View document
         </Link>
@@ -194,14 +194,14 @@ function FileResult({
 
   if (result.status === 'duplicate') {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <p className="text-sm font-medium text-amber-700">
+      <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
           {result.filename} — Duplicate
         </p>
         {result.duplicate_doc_id && (
           <Link
             to={`/docs/${result.duplicate_doc_id}`}
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
             View existing document
           </Link>
@@ -211,7 +211,7 @@ function FileResult({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
       <p className="mb-3 text-sm font-medium">
         {result.filename}{' '}
         <span className="text-gray-400">
@@ -243,7 +243,7 @@ function FileResult({
           <select
             value={selectedDoc}
             onChange={(e) => setSelectedDoc(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm"
           >
             <option value="">Select document...</option>
             {docs.map((d) => (

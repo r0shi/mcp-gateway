@@ -12,7 +12,7 @@ export default function LoginPage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading...</div>
       </div>
     )
   }
@@ -35,21 +35,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
+        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900 dark:text-gray-100">
           Local Knowledge Appliance
         </h1>
         <form
           onSubmit={handleSubmit}
-          className="rounded-lg bg-white p-6 shadow-md"
+          className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-md"
         >
           {error && (
-            <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mb-4 rounded bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-400">
               {error}
             </div>
           )}
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Email
           </label>
           <input
@@ -60,9 +60,9 @@ export default function LoginPage() {
             autoFocus
             autoComplete="email"
             autoCapitalize="off"
-            className="mb-4 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mb-4 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Password
           </label>
           <input
@@ -72,7 +72,7 @@ export default function LoginPage() {
             required
             autoComplete="current-password"
             autoCapitalize="off"
-            className="mb-6 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mb-6 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           <button
             type="submit"

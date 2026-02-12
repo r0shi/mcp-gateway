@@ -7,12 +7,13 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { configureApi, post } from './api'
+import { configureApi, patch, post } from './api'
 
 interface User {
   user_id: string
   email: string
   role: string
+  preferences: { theme?: string; page_size?: number }
 }
 
 interface AuthState {
@@ -22,10 +23,19 @@ interface AuthState {
   needsSetup: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  updatePreferences: (prefs: Partial<User['preferences']>) => Promise<void>
   isAdmin: boolean
 }
 
 const AuthContext = createContext<AuthState | null>(null)
+
+function applyTheme(theme?: string) {
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -83,7 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             headers: { Authorization: `Bearer ${data.access_token}` },
           })
           if (meRes.ok && !cancelled) {
-            setUser(await meRes.json())
+            const userData: User = await meRes.json()
+            setUser(userData)
+            applyTheme(userData.preferences?.theme)
           }
         }
       } catch {
@@ -106,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenRef.current = data.access_token
     setToken(data.access_token)
     setUser(data.user)
+    applyTheme(data.user.preferences?.theme)
   }, [])
 
   const logout = useCallback(async () => {
@@ -115,7 +128,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ignore
     }
     clearAuth()
+    applyTheme('light')
   }, [clearAuth])
+
+  const updatePreferences = useCallback(
+    async (prefs: Partial<User['preferences']>) => {
+      const updated: User = await patch('/api/me/preferences', prefs)
+      setUser(updated)
+      applyTheme(updated.preferences?.theme)
+    },
+    [],
+  )
 
   return (
     <AuthContext.Provider
@@ -126,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         needsSetup,
         login,
         logout,
+        updatePreferences,
         isAdmin: user?.role === 'admin',
       }}
     >

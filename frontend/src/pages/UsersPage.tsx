@@ -62,7 +62,7 @@ export default function UsersPage() {
     }
   }
 
-  if (loading) return <div className="text-gray-500">Loading...</div>
+  if (loading) return <div className="text-gray-500 dark:text-gray-400">Loading...</div>
 
   return (
     <div>
@@ -77,7 +77,7 @@ export default function UsersPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
@@ -92,28 +92,28 @@ export default function UsersPage() {
         />
       )}
 
-      <div className="overflow-hidden rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Email
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Role
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Active
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Last Login
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
             {users.map((u) => (
               <tr key={u.user_id}>
                 <td className="px-4 py-3 text-sm">{u.email}</td>
@@ -122,8 +122,8 @@ export default function UsersPage() {
                     onClick={() => handleToggleRole(u)}
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       u.role === 'admin'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-gray-100 text-gray-600'
+                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {u.role}
@@ -134,14 +134,14 @@ export default function UsersPage() {
                     onClick={() => handleToggleActive(u)}
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       u.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                     }`}
                   >
                     {u.is_active ? 'active' : 'disabled'}
                   </button>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-500">
+                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                   {u.last_login_at
                     ? new Date(u.last_login_at).toLocaleString()
                     : 'Never'}
@@ -149,7 +149,7 @@ export default function UsersPage() {
                 <td className="px-4 py-3 text-right">
                   <button
                     onClick={() => handleDelete(u)}
-                    className="text-sm text-red-600 hover:underline"
+                    className="text-sm text-red-600 dark:text-red-400 hover:underline"
                   >
                     Delete
                   </button>
@@ -191,11 +191,11 @@ function CreateUserForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-4 rounded-lg border border-gray-200 bg-white p-4"
+      className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
     >
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-700">
+          <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
             Email
           </label>
           <input
@@ -203,11 +203,11 @@ function CreateUserForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-700">
+          <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
             Password
           </label>
           <input
@@ -215,17 +215,17 @@ function CreateUserForm({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-700">
+          <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
             Role
           </label>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm"
           >
             <option value="user">user</option>
             <option value="admin">admin</option>

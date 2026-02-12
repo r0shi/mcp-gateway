@@ -7,7 +7,7 @@ export default function ProtectedRoute() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading...</div>
       </div>
     )
   }

@@ -87,5 +87,6 @@ async def setup(
             user_id=str(user.user_id),
             email=user.email,
             role=user.role.value,
+            preferences=user.preferences or {},
         ),
     )

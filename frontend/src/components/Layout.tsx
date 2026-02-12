@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
 import JobToast from './JobToast'
 
@@ -11,6 +12,28 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function Layout() {
   const { user, logout, isAdmin } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClick)
+      document.addEventListener('keydown', handleKey)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [menuOpen])
 
   return (
     <div className="min-h-screen">
@@ -50,13 +73,46 @@ export default function Layout() {
                   admin
                 </span>
               )}
-              <span className="text-sm text-gray-300">{user?.email}</span>
-              <button
-                onClick={logout}
-                className="rounded-md px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
-              >
-                Logout
-              </button>
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="flex items-center space-x-1 rounded-md px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                >
+                  <span>{user?.email}</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-1 w-48 rounded-md bg-white dark:bg-gray-700 py-1 shadow-lg ring-1 ring-black/5 dark:ring-white/10 z-50">
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false)
+                        navigate('/preferences')
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    >
+                      Preferences
+                    </button>
+                    <div className="border-t border-gray-200 dark:border-gray-600" />
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false)
+                        logout()
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

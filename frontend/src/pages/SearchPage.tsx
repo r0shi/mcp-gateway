@@ -65,7 +65,7 @@ export default function SearchPage() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search documents..."
           autoFocus
-          className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
         <button
           type="submit"
@@ -77,7 +77,7 @@ export default function SearchPage() {
       </form>
 
       {error && (
-        <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
@@ -85,7 +85,7 @@ export default function SearchPage() {
       {results && (
         <>
           {results.possible_conflict && results.conflict_sources.length > 0 && (
-            <div className="mb-4 rounded bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="mb-4 rounded bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-400">
               <strong>Possible conflict:</strong> Similar content found across
               multiple sources:{' '}
               {results.conflict_sources.map((s, i) => (
@@ -93,7 +93,7 @@ export default function SearchPage() {
                   {i > 0 && ', '}
                   <Link
                     to={`/docs/${s.doc_id}`}
-                    className="font-medium text-amber-900 underline"
+                    className="font-medium text-amber-900 dark:text-amber-300 underline"
                   >
                     {s.title}
                   </Link>
@@ -103,26 +103,26 @@ export default function SearchPage() {
           )}
 
           {results.hits.length === 0 ? (
-            <p className="text-gray-500">No results found.</p>
+            <p className="text-gray-500 dark:text-gray-400">No results found.</p>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {results.hits.length} results
               </p>
               {results.hits.map((hit) => (
                 <div
                   key={hit.chunk_id}
-                  className="rounded-lg border border-gray-200 bg-white p-4"
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <Link
                       to={`/docs/${hit.doc_id}`}
-                      className="font-medium text-blue-600 hover:underline"
+                      className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       {hit.doc_title || 'Untitled'}
                     </Link>
                     <div className="flex items-center space-x-2">
-                      <div className="h-1.5 w-24 rounded-full bg-gray-200">
+                      <div className="h-1.5 w-24 rounded-full bg-gray-200 dark:bg-gray-600">
                         <div
                           className="h-1.5 rounded-full bg-blue-500"
                           style={{
@@ -135,7 +135,7 @@ export default function SearchPage() {
                       </span>
                     </div>
                   </div>
-                  <p className="mb-2 text-sm text-gray-700 line-clamp-3">
+                  <p className="mb-2 text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
                     {hit.chunk_text}
                   </p>
                   <div className="flex items-center space-x-3 text-xs text-gray-400">

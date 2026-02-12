@@ -41,7 +41,7 @@ export default function SetupPage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading...</div>
       </div>
     )
   }
@@ -81,24 +81,24 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-sm">
-        <h1 className="mb-2 text-center text-2xl font-bold text-gray-900">
+        <h1 className="mb-2 text-center text-2xl font-bold text-gray-900 dark:text-gray-100">
           Local Knowledge Appliance
         </h1>
-        <p className="mb-6 text-center text-sm text-gray-500">
+        <p className="mb-6 text-center text-sm text-gray-500 dark:text-gray-400">
           Create your admin account to get started.
         </p>
         <form
           onSubmit={handleSubmit}
-          className="rounded-lg bg-white p-6 shadow-md"
+          className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-md"
         >
           {error && (
-            <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mb-4 rounded bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-400">
               {error}
             </div>
           )}
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Email
           </label>
           <input
@@ -109,9 +109,9 @@ export default function SetupPage() {
             autoFocus
             autoComplete="username"
             autoCapitalize="off"
-            className="mb-4 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mb-4 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Password
           </label>
           <input
@@ -122,21 +122,21 @@ export default function SetupPage() {
             autoComplete="new-password"
             autoCapitalize="off"
             passwordrules="minlength: 12; required: upper; required: lower; required: digit;"
-            className="mb-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mb-2 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           {password.length > 0 && (
             <ul className="mb-4 space-y-1 text-xs">
               {checks.map((c) => (
                 <li
                   key={c.label}
-                  className={c.passed ? 'text-green-600' : 'text-red-500'}
+                  className={c.passed ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}
                 >
                   {c.passed ? '\u2713' : '\u2717'} {c.label}
                 </li>
               ))}
             </ul>
           )}
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Confirm password
           </label>
           <input
@@ -147,10 +147,10 @@ export default function SetupPage() {
             autoComplete="new-password"
             autoCapitalize="off"
             passwordrules="minlength: 12; required: upper; required: lower; required: digit;"
-            className="mb-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mb-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           {confirmPassword.length > 0 && !passwordsMatch && (
-            <p className="mb-4 text-xs text-red-500">Passwords do not match</p>
+            <p className="mb-4 text-xs text-red-500 dark:text-red-400">Passwords do not match</p>
           )}
           <button
             type="submit"

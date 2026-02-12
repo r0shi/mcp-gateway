@@ -48,7 +48,7 @@ export default function ApiKeysPage() {
     }
   }
 
-  if (loading) return <div className="text-gray-500">Loading...</div>
+  if (loading) return <div className="text-gray-500 dark:text-gray-400">Loading...</div>
 
   return (
     <div>
@@ -66,17 +66,17 @@ export default function ApiKeysPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
 
       {newKey && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
-          <p className="mb-2 text-sm font-medium text-green-800">
+        <div className="mb-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
+          <p className="mb-2 text-sm font-medium text-green-800 dark:text-green-400">
             API key created! Copy it now — it won't be shown again.
           </p>
-          <code className="block rounded bg-white px-3 py-2 text-sm font-mono text-gray-800 select-all">
+          <code className="block rounded bg-white dark:bg-gray-700 px-3 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 select-all">
             {newKey.raw_key}
           </code>
         </div>
@@ -92,28 +92,28 @@ export default function ApiKeysPage() {
         />
       )}
 
-      <div className="overflow-hidden rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Created
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Last Used
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
             {keys.map((k) => (
               <tr key={k.key_id}>
                 <td className="px-4 py-3 text-sm font-medium">{k.name}</td>
@@ -121,17 +121,17 @@ export default function ApiKeysPage() {
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       k.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                     }`}
                   >
                     {k.is_active ? 'active' : 'revoked'}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-500">
+                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                   {new Date(k.created_at).toLocaleDateString()}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-500">
+                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                   {k.last_used_at
                     ? new Date(k.last_used_at).toLocaleString()
                     : 'Never'}
@@ -140,7 +140,7 @@ export default function ApiKeysPage() {
                   {k.is_active && (
                     <button
                       onClick={() => handleRevoke(k.key_id)}
-                      className="text-sm text-red-600 hover:underline"
+                      className="text-sm text-red-600 dark:text-red-400 hover:underline"
                     >
                       Revoke
                     </button>
@@ -152,7 +152,7 @@ export default function ApiKeysPage() {
               <tr>
                 <td
                   colSpan={5}
-                  className="px-4 py-6 text-center text-sm text-gray-500"
+                  className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400"
                 >
                   No API keys yet.
                 </td>
@@ -191,10 +191,10 @@ function CreateKeyForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-4 flex items-end space-x-3 rounded-lg border border-gray-200 bg-white p-4"
+      className="mb-4 flex items-end space-x-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
     >
       <div className="flex-1">
-        <label className="mb-1 block text-xs font-medium text-gray-700">
+        <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
           Key Name
         </label>
         <input
@@ -203,7 +203,7 @@ function CreateKeyForm({
           onChange={(e) => setName(e.target.value)}
           required
           placeholder="e.g. Claude Desktop"
-          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm"
         />
       </div>
       <button
