@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { get, post, del } from '../api'
 import { useAuth } from '../auth'
 import { useJobEvents, type JobEvent } from '../hooks/useJobEvents'
@@ -51,6 +51,42 @@ interface ContentResponse {
   version_id: string
   pages: PageContent[]
   total_chars: number
+}
+
+function Disclosure({
+  label,
+  defaultOpen,
+  children,
+}: {
+  label: ReactNode
+  defaultOpen: boolean
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+      >
+        <svg
+          className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            fillRule="evenodd"
+            d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+            clipRule="evenodd"
+          />
+        </svg>
+        {label}
+      </button>
+      {open && <div className="mt-2">{children}</div>}
+    </div>
+  )
 }
 
 function JobStatusBadge({ status }: { status: string }) {
@@ -199,6 +235,7 @@ function Pagination({
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { isAdmin, user } = useAuth()
   const [doc, setDoc] = useState<DocumentDetail | null>(null)
   const [content, setContent] = useState<ContentResponse | null>(null)
@@ -208,6 +245,12 @@ export default function DocumentDetailPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [contentPage, setContentPage] = useState(1)
   const [pageSize, setPageSize] = useState(user?.preferences?.page_size || 10)
+  const [highlightPage, setHighlightPage] = useState<number | null>(null)
+  const contentLoadedRef = useRef(false)
+
+  // URL params for deep linking from search results
+  const urlShowContent = searchParams.get('showContent') === 'true'
+  const urlTargetPage = searchParams.get('page') ? Number(searchParams.get('page')) : null
 
   function loadDoc() {
     return get<DocumentDetail>(`/api/docs/${id}`)
@@ -268,10 +311,32 @@ export default function DocumentDetailPage() {
     try {
       const data = await get<ContentResponse>(`/api/docs/${id}/content`)
       setContent(data)
+      return data
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load content')
+      return null
     }
   }
+
+  // Auto-load content when arriving from search with ?showContent=true
+  useEffect(() => {
+    if (urlShowContent && !contentLoadedRef.current && !loading) {
+      contentLoadedRef.current = true
+      loadContent().then((data) => {
+        if (data && urlTargetPage != null) {
+          // Find the index of the target document page
+          const pageIdx = data.pages.findIndex((p) => p.page_num === urlTargetPage)
+          if (pageIdx >= 0) {
+            const paginationPage = Math.floor(pageIdx / pageSize) + 1
+            setContentPage(paginationPage)
+            setHighlightPage(urlTargetPage)
+            // Clear highlight after animation
+            setTimeout(() => setHighlightPage(null), 2000)
+          }
+        }
+      })
+    }
+  }, [urlShowContent, urlTargetPage, loading])
 
   async function handleReprocess() {
     setActionLoading(true)
@@ -302,6 +367,16 @@ export default function DocumentDetailPage() {
   if (loading) return <div className="text-gray-500 dark:text-gray-400">Loading...</div>
   if (error && !doc) return <div className="text-red-600 dark:text-red-400">Error: {error}</div>
   if (!doc) return <div className="text-gray-500 dark:text-gray-400">Not found</div>
+
+  // Version numbering: API returns newest first, but "Version 1" = oldest
+  const versionsWithNumber = doc.versions.map((v, i) => ({
+    ...v,
+    versionNumber: doc.versions.length - i,
+  }))
+
+  const allVersionsReady = doc.versions.every((v) => v.status === 'ready')
+  const versionCount = doc.versions.length
+  const versionLabel = `${versionCount} version${versionCount !== 1 ? 's' : ''}`
 
   return (
     <div>
@@ -343,73 +418,97 @@ export default function DocumentDetailPage() {
         {new Date(doc.updated_at).toLocaleString()}
       </div>
 
-      <h2 className="mb-2 mt-6 text-lg font-semibold">Versions</h2>
-      {doc.versions.map((v) => (
-        <div
-          key={v.version_id}
-          className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+      <div className="mt-6 mb-6">
+        <Disclosure
+          label={<span className="text-lg font-semibold">{versionLabel}</span>}
+          defaultOpen={!allVersionsReady}
         >
-          <VersionBanner version={v} />
-          <div className="mb-2 flex items-center justify-between">
-            <div className="text-sm">
-              <span className="font-medium">
-                {v.mime_type || 'unknown type'}
-              </span>
-              {v.size_bytes != null && (
-                <span className="ml-2 text-gray-500 dark:text-gray-400">
-                  {(v.size_bytes / 1024).toFixed(0)} KB
-                </span>
-              )}
-            </div>
-            <JobStatusBadge status={v.status} />
-          </div>
-          {v.error && (
-            <div className="mb-2 text-sm text-red-600 dark:text-red-400">Error: {v.error}</div>
-          )}
-          <div className="text-xs text-gray-400">
-            {v.extracted_chars != null && (
-              <span>Chars: {v.extracted_chars} | </span>
-            )}
-            OCR: {v.needs_ocr ? 'yes' : 'no'} | Text layer:{' '}
-            {v.has_text_layer ? 'yes' : 'no'}
-          </div>
+          <div className="space-y-4">
+            {versionsWithNumber.map((v) => {
+              const versionNotReady = v.status !== 'ready'
+              return (
+                <div
+                  key={v.version_id}
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+                >
+                  <div className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    Version {v.versionNumber}{' '}
+                    <span className="font-normal text-gray-500 dark:text-gray-400">
+                      ({new Date(v.created_at).toLocaleDateString()})
+                    </span>
+                  </div>
+                  <VersionBanner version={v} />
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-sm">
+                      <span className="font-medium">
+                        {v.mime_type || 'unknown type'}
+                      </span>
+                      {v.size_bytes != null && (
+                        <span className="ml-2 text-gray-500 dark:text-gray-400">
+                          {(v.size_bytes / 1024).toFixed(0)} KB
+                        </span>
+                      )}
+                    </div>
+                    <JobStatusBadge status={v.status} />
+                  </div>
+                  {v.error && (
+                    <div className="mb-2 text-sm text-red-600 dark:text-red-400">Error: {v.error}</div>
+                  )}
+                  <div className="text-xs text-gray-400">
+                    {v.extracted_chars != null && (
+                      <span>Chars: {v.extracted_chars} | </span>
+                    )}
+                    OCR: {v.needs_ocr ? 'yes' : 'no'} | Text layer:{' '}
+                    {v.has_text_layer ? 'yes' : 'no'}
+                  </div>
 
-          {v.jobs.length > 0 && (
-            <table className="mt-3 w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-xs text-gray-500 dark:text-gray-400">
-                  <th className="pb-1 pr-3">Stage</th>
-                  <th className="pb-1 pr-3">Status</th>
-                  <th className="pb-1 pr-3">Progress</th>
-                  <th className="pb-1">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {v.jobs.map((j) => (
-                  <tr key={j.job_id} className="border-b border-gray-100 dark:border-gray-700">
-                    <td className="py-1 pr-3 font-medium">{j.stage}</td>
-                    <td className="py-1 pr-3">
-                      <JobStatusBadge status={j.status} />
-                    </td>
-                    <td className="py-1 pr-3 text-gray-500 dark:text-gray-400">
-                      {j.progress_total
-                        ? `${j.progress_current || 0}/${j.progress_total}`
-                        : '—'}
-                    </td>
-                    <td className="py-1 text-xs text-gray-400">
-                      {j.finished_at
-                        ? new Date(j.finished_at).toLocaleTimeString()
-                        : j.started_at
-                          ? 'running...'
-                          : 'queued'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      ))}
+                  {v.jobs.length > 0 && (
+                    <div className="mt-3">
+                      <Disclosure
+                        label="Ingestion Jobs"
+                        defaultOpen={versionNotReady}
+                      >
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-xs text-gray-500 dark:text-gray-400">
+                              <th className="pb-1 pr-3">Stage</th>
+                              <th className="pb-1 pr-3">Status</th>
+                              <th className="pb-1 pr-3">Progress</th>
+                              <th className="pb-1">Time</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {v.jobs.map((j) => (
+                              <tr key={j.job_id} className="border-b border-gray-100 dark:border-gray-700">
+                                <td className="py-1 pr-3 font-medium">{j.stage}</td>
+                                <td className="py-1 pr-3">
+                                  <JobStatusBadge status={j.status} />
+                                </td>
+                                <td className="py-1 pr-3 text-gray-500 dark:text-gray-400">
+                                  {j.progress_total
+                                    ? `${j.progress_current || 0}/${j.progress_total}`
+                                    : '\u2014'}
+                                </td>
+                                <td className="py-1 text-xs text-gray-400">
+                                  {j.finished_at
+                                    ? new Date(j.finished_at).toLocaleTimeString()
+                                    : j.started_at
+                                      ? 'running...'
+                                      : 'queued'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </Disclosure>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </Disclosure>
+      </div>
 
       <h2 className="mb-2 mt-6 text-lg font-semibold">Content</h2>
       {!showContent ? (
@@ -474,7 +573,11 @@ export default function DocumentDetailPage() {
               {visiblePages.map((page) => (
                 <div
                   key={page.page_num}
-                  className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+                  className={`rounded border bg-white dark:bg-gray-800 p-4 transition-all duration-500 ${
+                    highlightPage === page.page_num
+                      ? 'border-blue-400 ring-2 ring-blue-400/50'
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

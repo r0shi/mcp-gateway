@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { post } from '../api'
 
@@ -29,20 +29,62 @@ interface SearchResponse {
   conflict_sources: ConflictSource[]
 }
 
+const HISTORY_KEY = 'search_history'
+const MAX_HISTORY = 10
+
+function getHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function saveHistory(history: string[]) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
+}
+
+function addToHistory(query: string) {
+  const trimmed = query.trim()
+  if (!trimmed) return
+  const history = getHistory().filter((q) => q !== trimmed)
+  history.unshift(trimmed)
+  saveHistory(history.slice(0, MAX_HISTORY))
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [history, setHistory] = useState<string[]>(getHistory)
+  const [showHistory, setShowHistory] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
-  async function handleSearch(e: FormEvent) {
-    e.preventDefault()
-    if (!query.trim()) return
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowHistory(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  async function doSearch(q: string) {
+    const trimmed = q.trim()
+    if (!trimmed) return
     setError('')
     setLoading(true)
+    addToHistory(trimmed)
+    setHistory(getHistory())
     try {
       const data = await post<SearchResponse>('/api/search', {
-        query: query.trim(),
+        query: trimmed,
         k: 10,
       })
       setResults(data)
@@ -53,20 +95,74 @@ export default function SearchPage() {
     }
   }
 
+  function handleSearch(e: FormEvent) {
+    e.preventDefault()
+    setShowHistory(false)
+    doSearch(query)
+  }
+
+  function selectHistoryItem(q: string) {
+    setQuery(q)
+    setShowHistory(false)
+    doSearch(q)
+  }
+
+  function clearHistory() {
+    localStorage.removeItem(HISTORY_KEY)
+    setHistory([])
+    setShowHistory(false)
+  }
+
   const maxScore = results?.hits[0]?.score || 1
 
   return (
     <div>
       <h1 className="mb-4 text-xl font-bold">Search</h1>
       <form onSubmit={handleSearch} className="mb-6 flex space-x-2">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search documents..."
-          autoFocus
-          className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
+        <div className="relative flex-1" ref={wrapperRef}>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => history.length > 0 && setShowHistory(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setShowHistory(false)
+            }}
+            placeholder="Search documents..."
+            autoFocus
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          {showHistory && history.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg">
+              {history.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    selectHistoryItem(q)
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <svg className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {q}
+                </button>
+              ))}
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  clearHistory()
+                }}
+                className="w-full border-t border-gray-100 dark:border-gray-700 px-3 py-1.5 text-left text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                Clear history
+              </button>
+            </div>
+          )}
+        </div>
         <button
           type="submit"
           disabled={loading}
@@ -109,49 +205,55 @@ export default function SearchPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {results.hits.length} results
               </p>
-              {results.hits.map((hit) => (
-                <div
-                  key={hit.chunk_id}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <Link
-                      to={`/docs/${hit.doc_id}`}
-                      className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      {hit.doc_title || 'Untitled'}
-                    </Link>
-                    <div className="flex items-center space-x-2">
-                      <div className="h-1.5 w-24 rounded-full bg-gray-200 dark:bg-gray-600">
-                        <div
-                          className="h-1.5 rounded-full bg-blue-500"
-                          style={{
-                            width: `${Math.round((hit.score / maxScore) * 100)}%`,
-                          }}
-                        />
+              {results.hits.map((hit) => {
+                const linkTo = hit.page_start != null
+                  ? `/docs/${hit.doc_id}?showContent=true&page=${hit.page_start}`
+                  : `/docs/${hit.doc_id}?showContent=true`
+
+                return (
+                  <div
+                    key={hit.chunk_id}
+                    className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <Link
+                        to={linkTo}
+                        className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {hit.doc_title || 'Untitled'}
+                      </Link>
+                      <div className="flex items-center space-x-2">
+                        <div className="h-1.5 w-24 rounded-full bg-gray-200 dark:bg-gray-600">
+                          <div
+                            className="h-1.5 rounded-full bg-blue-500"
+                            style={{
+                              width: `${Math.round((hit.score / maxScore) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          {hit.score.toFixed(3)}
+                        </span>
                       </div>
-                      <span className="text-xs text-gray-400">
-                        {hit.score.toFixed(3)}
-                      </span>
+                    </div>
+                    <p className="mb-2 text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
+                      {hit.chunk_text}
+                    </p>
+                    <div className="flex items-center space-x-3 text-xs text-gray-400">
+                      {hit.page_start != null && (
+                        <span>
+                          Page {hit.page_start}
+                          {hit.page_end != null && hit.page_end !== hit.page_start
+                            ? `\u2013${hit.page_end}`
+                            : ''}
+                        </span>
+                      )}
+                      <span>Lang: {hit.language}</span>
+                      {hit.ocr_used && <span>OCR</span>}
                     </div>
                   </div>
-                  <p className="mb-2 text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
-                    {hit.chunk_text}
-                  </p>
-                  <div className="flex items-center space-x-3 text-xs text-gray-400">
-                    {hit.page_start != null && (
-                      <span>
-                        Page {hit.page_start}
-                        {hit.page_end != null && hit.page_end !== hit.page_start
-                          ? `–${hit.page_end}`
-                          : ''}
-                      </span>
-                    )}
-                    <span>Lang: {hit.language}</span>
-                    {hit.ocr_used && <span>OCR</span>}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </>
