@@ -1,3 +1,5 @@
+> **This repository has been archived.** Development continues at [github.com/r0shi/harborclerk](https://github.com/r0shi/harborclerk) under the new name **Harbor Clerk**.
+
 # Local Knowledge Appliance
 
 A single-tenant document dropbox with OCR, hybrid full-text + vector search, and an MCP endpoint for LLM tool use. Designed for small offices running on a Mac mini or similar hardware.
